@@ -91,7 +91,7 @@ This is a recommended config for running a Gemini-powered assistant (`~/.warelay
     allowFrom: ["+1234567890"],  // your phone number
     reply: {
       mode: "command",
-      cwd: "/Users/username/gemini_assistant",   // Give your AI a workspace!
+      cwd: "/Users/sidhaarthkrishnan/gemini",   // Give your AI a workspace!
       bodyPrefix: "You are Gem, a helpful assistant on WhatsApp.",
       command: [
         "gemini",
