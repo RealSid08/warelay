@@ -34,6 +34,9 @@ export function parseGeminiJson(raw: string): GeminiJsonParseResult {
             if (typeof parsed.text === "string") {
                 text = parsed.text;
                 valid = true;
+            } else if (typeof parsed.response === "string") {
+                text = parsed.response;
+                valid = true;
             } else if (typeof parsed.content === "string") {
                 text = parsed.content;
                 valid = true;

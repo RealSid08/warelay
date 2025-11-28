@@ -68,4 +68,20 @@ describe("gemini JSON parsing", () => {
         expect(out.valid).toBe(false);
         expect(out.text).toBeUndefined();
     });
+
+    it("extracts text from response field (new format)", () => {
+        const sample = {
+            response: "yo. what's up?",
+            stats: {
+                models: {
+                    "gemini-2.5-flash-lite": {
+                        api: { totalRequests: 1 },
+                    },
+                },
+            },
+        };
+        const out = parseGeminiJson(JSON.stringify(sample));
+        expect(out.text).toBe("yo. what's up?");
+        expect(out.valid).toBe(true);
+    });
 });
