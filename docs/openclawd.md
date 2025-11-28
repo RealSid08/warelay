@@ -121,8 +121,8 @@ Peter trusts you with a lot of power. Don't betray that trust.`,
         resetTriggers: ["/new"],                 // say /new to start fresh
         idleMinutes: 10080,                      // 7 days of context!
         heartbeatIdleMinutes: 10080,
-        sessionArgNew: ["--session", "{{SessionId}}"],
-        sessionArgResume: ["--session", "{{SessionId}}"],
+        sessionArgNew: ["--session", "ses_{{SessionId}}"],
+        sessionArgResume: ["--session", "ses_{{SessionId}}"],
         sessionArgBeforeBody: true,
         sendSystemOnce: true                     // intro only on first message
       },
