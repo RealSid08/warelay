@@ -311,6 +311,19 @@ export async function runCommandReply(
         trimmed = parsed.text.trim();
       }
     }
+
+    // Fallback: If Gemini invocation failed to parse stdout (or it was empty), try stderr.
+    // Gemini CLI often outputs error JSON to stderr mixed with logs.
+    if (isGeminiInvocation && !parsed?.valid && stderr?.trim()) {
+      const stderrParsed = parseGeminiJson(stderr.trim());
+      if (stderrParsed.valid) {
+        parsed = stderrParsed;
+        if (parsed.text) {
+          trimmed = parsed.text.trim();
+          logVerbose(`Gemini JSON parsed from stderr -> ${trimmed.slice(0, 120)}...`);
+        }
+      }
+    }
     const { text: cleanedText, mediaUrls: mediaFound } =
       splitMediaFromOutput(trimmed);
     trimmed = cleanedText;
@@ -327,44 +340,6 @@ export async function runCommandReply(
     }
     logVerbose(`Command auto-reply stdout (trimmed): ${trimmed || "<empty>"}`);
     logVerbose(`Command auto-reply finished in ${Date.now() - started}ms`);
-    if ((code ?? 0) !== 0) {
-      console.error(
-        `Command auto-reply exited with code ${code ?? "unknown"} (signal: ${signal ?? "none"})`,
-      );
-      return {
-        payload: undefined,
-        meta: {
-          durationMs: Date.now() - started,
-          queuedMs,
-          queuedAhead,
-          exitCode: code,
-          signal,
-          killed,
-          claudeMeta: parsed
-            ? summarizeClaudeMetadata(parsed.parsed)
-            : undefined,
-        },
-      };
-    }
-    if (killed && !signal) {
-      console.error(
-        `Command auto-reply process killed before completion (exit code ${code ?? "unknown"})`,
-      );
-      return {
-        payload: undefined,
-        meta: {
-          durationMs: Date.now() - started,
-          queuedMs,
-          queuedAhead,
-          exitCode: code,
-          signal,
-          killed,
-          claudeMeta: parsed
-            ? summarizeClaudeMetadata(parsed.parsed)
-            : undefined,
-        },
-      };
-    }
     let mediaUrls =
       mediaFromCommand ?? (reply.mediaUrl ? [reply.mediaUrl] : undefined);
 
@@ -402,6 +377,7 @@ export async function runCommandReply(
           mediaUrls,
         }
         : undefined;
+
     const meta: CommandReplyMeta = {
       durationMs: Date.now() - started,
       queuedMs,
@@ -411,9 +387,36 @@ export async function runCommandReply(
       killed,
       claudeMeta: parsed ? summarizeClaudeMetadata(parsed.parsed) : undefined,
     };
+
     if (isVerbose()) {
       logVerbose(`Command auto-reply meta: ${JSON.stringify(meta)}`);
     }
+
+    if ((code ?? 0) !== 0) {
+      console.error(
+        `Command auto-reply exited with code ${code ?? "unknown"} (signal: ${signal ?? "none"})`,
+      );
+      // If we extracted a valid payload (text or media) despite the error code, return it.
+      // This is common for CLIs that output structured error JSONs on failure.
+      if (payload) {
+        return { payload, meta };
+      }
+      return {
+        payload: undefined,
+        meta,
+      };
+    }
+
+    if (killed && !signal) {
+      console.error(
+        `Command auto-reply process killed before completion (exit code ${code ?? "unknown"})`,
+      );
+      return {
+        payload: undefined,
+        meta,
+      };
+    }
+
     return { payload, meta };
   } catch (err) {
     const elapsed = Date.now() - started;

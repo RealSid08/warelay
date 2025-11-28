@@ -22,7 +22,27 @@ export type GeminiJsonParseResult = {
 
 export function parseGeminiJson(raw: string): GeminiJsonParseResult {
     try {
-        const parsed = JSON.parse(raw);
+        let parsed: any;
+        try {
+            parsed = JSON.parse(raw);
+        } catch {
+            // If direct parsing fails, try to find a JSON object within the string.
+            // This handles cases where the CLI outputs logs/text before/after the JSON.
+            const firstOpen = raw.indexOf("{");
+            const lastClose = raw.lastIndexOf("}");
+            if (firstOpen !== -1 && lastClose > firstOpen) {
+                try {
+                    const jsonSubstring = raw.substring(firstOpen, lastClose + 1);
+                    parsed = JSON.parse(jsonSubstring);
+                } catch {
+                    // Still failed, return invalid
+                    return { parsed: {}, valid: false };
+                }
+            } else {
+                return { parsed: {}, valid: false };
+            }
+        }
+
         let text = "";
         let valid = false;
         const meta: GeminiJsonParseResult["meta"] = {};

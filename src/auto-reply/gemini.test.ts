@@ -99,4 +99,12 @@ describe("gemini JSON parsing", () => {
         expect(out.text).toBe("Error from Gemini: Something went wrong");
         expect(out.valid).toBe(true);
     });
+
+    it("extracts JSON from mixed output (logs + JSON)", () => {
+        const json = JSON.stringify({ response: "mixed content" });
+        const raw = `Some log line\nAnother log line\n${json}\nTrailing log`;
+        const out = parseGeminiJson(raw);
+        expect(out.text).toBe("mixed content");
+        expect(out.valid).toBe(true);
+    });
 });
