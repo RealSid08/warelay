@@ -107,4 +107,18 @@ describe("gemini JSON parsing", () => {
         expect(out.text).toBe("mixed content");
         expect(out.valid).toBe(true);
     });
+
+    it("handles error field when message is an object", () => {
+        const sample = {
+            error: {
+                message: { some: "detail", nested: true },
+                code: 1
+            }
+        };
+        const out = parseGeminiJson(JSON.stringify(sample));
+        // We expect it to be stringified, not [object Object]
+        expect(out.text).toContain("Error from Gemini:");
+        expect(out.text).not.toContain("[object Object]");
+        expect(out.valid).toBe(true);
+    });
 });

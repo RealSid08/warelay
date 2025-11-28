@@ -108,10 +108,20 @@ export function parseGeminiJson(raw: string): GeminiJsonParseResult {
                 // For now, if we have no text but have an error, let's treat it as invalid
                 // but maybe log it? The caller handles invalid results.
                 // If we want to bubble up the error message to the user:
-                if (!text && parsed.error.message) {
-                    text = `Error from Gemini: ${parsed.error.message}`;
-                    // We mark it as valid so the user sees the error message instead of a generic failure
-                    valid = true;
+                if (!text) {
+                    let errorMsg = parsed.error.message;
+                    if (typeof errorMsg === "object") {
+                        try {
+                            errorMsg = JSON.stringify(errorMsg);
+                        } catch {
+                            errorMsg = String(errorMsg);
+                        }
+                    }
+                    if (errorMsg) {
+                        text = `Error from Gemini: ${errorMsg}`;
+                        // We mark it as valid so the user sees the error message instead of a generic failure
+                        valid = true;
+                    }
                 }
             }
         }
