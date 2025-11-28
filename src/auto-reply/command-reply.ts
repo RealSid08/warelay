@@ -19,6 +19,13 @@ import {
   type OpencodeJsonParseResult,
   parseOpencodeJson,
 } from "./opencode.js";
+import {
+  GEMINI_BIN,
+  GEMINI_IDENTITY_PREFIX,
+  type GeminiJsonParseResult,
+  parseGeminiJson,
+  summarizeGeminiMetadata,
+} from "./gemini.js";
 import { applyTemplate, type TemplateContext } from "./templating.js";
 import type { ReplyPayload } from "./types.js";
 
@@ -212,8 +219,10 @@ export async function runCommandReply(
     finalArgv.length > 0 && path.basename(finalArgv[0]) === CLAUDE_BIN;
   const isOpencodeInvocation =
     finalArgv.length > 0 && path.basename(finalArgv[0]) === OPENCODE_BIN;
+  const isGeminiInvocation =
+    finalArgv.length > 0 && path.basename(finalArgv[0]) === GEMINI_BIN;
   const shouldPrependIdentity =
-    (isClaudeInvocation || isOpencodeInvocation) &&
+    (isClaudeInvocation || isOpencodeInvocation || isGeminiInvocation) &&
     !(sendSystemOnce && systemSent);
   if (shouldPrependIdentity && finalArgv.length > 0) {
     const bodyIdx = finalArgv.length - 1;
@@ -221,7 +230,11 @@ export async function runCommandReply(
     finalArgv = [
       ...finalArgv.slice(0, bodyIdx),
       [
-        isClaudeInvocation ? CLAUDE_IDENTITY_PREFIX : OPENCODE_IDENTITY_PREFIX,
+        isClaudeInvocation
+          ? CLAUDE_IDENTITY_PREFIX
+          : isOpencodeInvocation
+            ? OPENCODE_IDENTITY_PREFIX
+            : GEMINI_IDENTITY_PREFIX,
         existingBody,
       ]
         .filter(Boolean)
@@ -256,7 +269,11 @@ export async function runCommandReply(
     if (stderr?.trim()) {
       logVerbose(`Command auto-reply stderr: ${stderr.trim()}`);
     }
-    let parsed: ClaudeJsonParseResult | OpencodeJsonParseResult | undefined;
+    let parsed:
+      | ClaudeJsonParseResult
+      | OpencodeJsonParseResult
+      | GeminiJsonParseResult
+      | undefined;
     if (
       trimmed &&
       (reply.claudeOutputFormat === "json" || isClaudeInvocation)
@@ -281,6 +298,14 @@ export async function runCommandReply(
       parsed = parseOpencodeJson(trimmed);
       if (parsed.valid && isVerbose()) {
         logVerbose(`Opencode JSON parsed -> ${parsed.text?.slice(0, 120)}...`);
+      }
+      if (parsed.text) {
+        trimmed = parsed.text.trim();
+      }
+    } else if (trimmed && isGeminiInvocation) {
+      parsed = parseGeminiJson(trimmed);
+      if (parsed.valid && isVerbose()) {
+        logVerbose(`Gemini JSON parsed -> ${parsed.text?.slice(0, 120)}...`);
       }
       if (parsed.text) {
         trimmed = parsed.text.trim();
@@ -372,10 +397,10 @@ export async function runCommandReply(
     const payload =
       trimmed || mediaUrls?.length
         ? {
-            text: trimmed || undefined,
-            mediaUrl: mediaUrls?.[0],
-            mediaUrls,
-          }
+          text: trimmed || undefined,
+          mediaUrl: mediaUrls?.[0],
+          mediaUrls,
+        }
         : undefined;
     const meta: CommandReplyMeta = {
       durationMs: Date.now() - started,

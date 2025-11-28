@@ -7,6 +7,7 @@ import { z } from "zod";
 
 export type ReplyMode = "text" | "command";
 export type ClaudeOutputFormat = "text" | "json" | "stream-json";
+export type GeminiOutputFormat = "text" | "json";
 export type SessionScope = "per-sender" | "global";
 
 export type SessionConfig = {
@@ -62,6 +63,7 @@ export type WarelayConfig = {
       mediaUrl?: string; // optional media attachment (path or URL)
       session?: SessionConfig;
       claudeOutputFormat?: ClaudeOutputFormat; // when command starts with `claude`, force an output format
+      geminiOutputFormat?: GeminiOutputFormat; // when command starts with `gemini`, force an output format
       mediaMaxMb?: number; // optional cap for outbound media (default 5MB)
       typingIntervalSeconds?: number; // how often to refresh typing indicator while command runs
       heartbeatMinutes?: number; // auto-ping cadence for command mode
@@ -109,6 +111,9 @@ const ReplySchema = z
         z.literal("stream-json"),
         z.undefined(),
       ])
+      .optional(),
+    geminiOutputFormat: z
+      .union([z.literal("text"), z.literal("json"), z.undefined()])
       .optional(),
   })
   .refine(
