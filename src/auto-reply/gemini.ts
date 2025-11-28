@@ -56,6 +56,7 @@ export function parseGeminiJson(raw: string): GeminiJsonParseResult {
             }
 
             // Extract metadata if available
+            // Extract metadata if available
             if (parsed.usageMetadata) {
                 if (parsed.usageMetadata.promptTokenCount) {
                     meta.tokens = meta.tokens || {};
@@ -64,6 +65,33 @@ export function parseGeminiJson(raw: string): GeminiJsonParseResult {
                 if (parsed.usageMetadata.candidatesTokenCount) {
                     meta.tokens = meta.tokens || {};
                     meta.tokens.output = parsed.usageMetadata.candidatesTokenCount;
+                }
+            } else if (parsed.stats && parsed.stats.models) {
+                // Handle new stats structure: stats.models[modelName].tokens
+                let input = 0;
+                let output = 0;
+                for (const modelKey in parsed.stats.models) {
+                    const modelStats = parsed.stats.models[modelKey];
+                    if (modelStats.tokens) {
+                        input += modelStats.tokens.prompt || 0;
+                        output += modelStats.tokens.candidates || 0;
+                    }
+                }
+                if (input > 0 || output > 0) {
+                    meta.tokens = { input, output };
+                }
+            }
+
+            // Handle error field
+            if (parsed.error) {
+                // If there's an error, we might want to expose it or mark as invalid.
+                // For now, if we have no text but have an error, let's treat it as invalid
+                // but maybe log it? The caller handles invalid results.
+                // If we want to bubble up the error message to the user:
+                if (!text && parsed.error.message) {
+                    text = `Error from Gemini: ${parsed.error.message}`;
+                    // We mark it as valid so the user sees the error message instead of a generic failure
+                    valid = true;
                 }
             }
         }

@@ -76,12 +76,27 @@ describe("gemini JSON parsing", () => {
                 models: {
                     "gemini-2.5-flash-lite": {
                         api: { totalRequests: 1 },
+                        tokens: { prompt: 10, candidates: 20 }
                     },
                 },
             },
         };
         const out = parseGeminiJson(JSON.stringify(sample));
         expect(out.text).toBe("yo. what's up?");
+        expect(out.valid).toBe(true);
+        expect(out.meta?.tokens?.input).toBe(10);
+        expect(out.meta?.tokens?.output).toBe(20);
+    });
+
+    it("handles error field by returning error message as text", () => {
+        const sample = {
+            error: {
+                message: "Something went wrong",
+                code: 123
+            }
+        };
+        const out = parseGeminiJson(JSON.stringify(sample));
+        expect(out.text).toBe("Error from Gemini: Something went wrong");
         expect(out.valid).toBe(true);
     });
 });
